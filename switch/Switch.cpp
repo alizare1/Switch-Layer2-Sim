@@ -22,6 +22,11 @@ Switch::Switch(int _id, int _ports): id(_id), portsCount(_ports) {
         FD_SET(in, &masterSet);
         maxSd = out;
     }
+
+    stp.root = id;
+    stp.sender = id;
+    stp.rootPort = 0;
+    stp.cost = -1;
 }
 
 void Switch::run() {
@@ -61,14 +66,25 @@ void Switch::handleStdIn(string in) {
         writePorts[stoi(tokenizedInput[2])] = fifo;
         maxSd = fifo;
     }
+    else if (tokenizedInput[0] == "stp") {
+        cout << "SWITCH " << id << " STARTING STP" << endl;
+        broadcastStp();
+    }
 }
 
 void Switch::handleFrame(char* frame, int readPortFD) {
+    int port = readPorts[readPortFD];
+
+    if (blockedPorts.count(port))
+        return;
+
     int dst = readNumber(frame, 0, 3);
     int src = readNumber(frame, 3, 3);
+    
 
     if (dst == STP) { // STP
-        ; // TODO
+        // cout << id << ": received stp" << endl;
+        handleStpMessage(frame, port);
     } else { // Data to forward
         cout << "SWITCH" << id << " RECV FRAME FROM " << src << " TO " << dst << " ON PORT " << readPorts[readPortFD] << endl;
         updateLookupTable(src, readPortFD);
@@ -98,6 +114,67 @@ void Switch::forwardFrame(char* frame, int src, int dst) {
     }
 }
 
+void Switch::handleStpMessage(char* frame, int port) {
+    int src = readNumber(frame, 3, 3);
+    int root = readNumber(frame, 6, 3);
+    int cost = readNumber(frame, 9, 3);
+
+    if (stp.isItBetter(root, src, cost)) {
+        stp.set(root, src, cost, port);
+    }
+    else if (stp.isItDesignated(root, src, cost) && port != stp.rootPort) {
+        blockedPorts.insert(port);
+        cout << "Switch " << id << ": Blocked port " << port << endl;
+    }
+
+    broadcastStp();
+}
+
+void Switch::broadcastStp() {
+    char stpMessage[FRAME_SIZE];
+    stp.makeStpFrame(stpMessage, id);
+    for (int port = 1; port <= portsCount; port++) {
+        if (blockedPorts.count(port) || port == stp.rootPort)
+            continue;
+        write(writePorts[port], stpMessage, FRAME_SIZE);
+    }
+}
+
+bool STPConfig::isItBetter(int _root, int _sender, int _cost) {
+    if (root == _root) {
+        if (cost == _cost)
+            return _sender <= sender;
+        return _cost < cost;
+    }
+
+    return _root < root;
+}
+
+void STPConfig::set(int _root, int _sender, int _cost, int port) {
+    root = _root;
+    _sender = sender;
+    cost = _cost;
+    rootPort = port;
+}
+
+bool STPConfig::isItDesignated(int _root, int _sender, int _cost) {
+    if (_root > root)
+        return false;
+    
+    if (cost+1 == _cost) {
+        return _sender < sender;
+    }
+
+    return _cost < cost+1;
+}
+
+void STPConfig::makeStpFrame(char* frame, int src) {
+    writeNumber(frame, STP, 0, 3);
+    writeNumber(frame, src, 3, 3);
+    writeNumber(frame, root, 6, 3);
+    writeNumber(frame, root, 6, 3);
+    writeNumber(frame, cost+1, 9, 3);
+}
 
 int main(int argc, char *argv[]) {
     if (argc < 3) {

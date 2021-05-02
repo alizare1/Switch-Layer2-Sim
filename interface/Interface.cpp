@@ -14,8 +14,8 @@ constexpr char CONNECT[] = "connect"; // connect <system_id> <switch_id> <port_n
 constexpr char SEND[] = "send"; // send <src system> <dst system> <file name>
 constexpr char RECEIVE[] = "recv"; // recv <src system> <dst system> <file name>
 constexpr char CONNECT_SWITCH[] = "connect_switch"; // connect_switch <s1_id> <s1_port> <s2_id> <s2_port>
+constexpr char RUN_STP[] = "run_stp";
 
-// TODO: STP
 
 void Interface::run() {
     mkdir("fifos", 0777);
@@ -41,6 +41,9 @@ void Interface::run() {
         }
         else if (commandType == CONNECT_SWITCH) {
             connectSwitch(input);
+        }
+        else if (commandType == RUN_STP) {
+            runStp();
         }
         
         usleep(20000);
@@ -140,6 +143,13 @@ void Interface::recvFile(string input) {
     string command = "recv#" + to_string(dstId) + "#" + fileName + "#";
 
     write(systems[srcId], command.c_str(), command.size());
+}
+
+void Interface::runStp() {
+    string command = "stp#";
+    for (auto const& switchPair : switches) {
+        write(switchPair.second, command.c_str(), command.size());
+    }
 }
 
 

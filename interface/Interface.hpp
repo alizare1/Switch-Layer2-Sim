@@ -16,5 +16,6 @@ private:
     void sendFile(std::string input);
     void recvFile(std::string input);
     void connectSwitch(std::string input);
+    void runStp();
 
 };
