@@ -1,0 +1,6 @@
+add_system 1
+add_system 2
+add_switch 1 2
+connect 1 1 1
+connect 2 1 2
+
