@@ -57,10 +57,7 @@ void System::handleStdIn(string in) {
 }
 
 bool System::isFileReq(char* frame) {
-    
-    if (getFileSizeFromFrame(frame) == FILE_REQ)
-        return true;
-    return false;
+    return getFileSizeFromFrame(frame) == FILE_REQ;
 }
 
 void System::handleFrame(char* frame) {
