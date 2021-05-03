@@ -86,7 +86,7 @@ void Switch::handleFrame(char* frame, int readPortFD) {
         // cout << id << ": received stp" << endl;
         handleStpMessage(frame, port);
     } else { // Data to forward
-        cout << "SWITCH" << id << " RECV FRAME FROM " << src << " TO " << dst << " ON PORT " << readPorts[readPortFD] << endl;
+        cout << "SWITCH " << id << " RECV FRAME FROM " << src << " TO " << dst << " ON PORT " << readPorts[readPortFD] << endl;
         updateLookupTable(src, readPortFD);
         forwardFrame(frame, src, dst);
     }
@@ -106,7 +106,7 @@ void Switch::forwardFrame(char* frame, int src, int dst) {
     } 
     else { // forward to all ports
         for (int port = 1; port <= portsCount; port++) {
-            if (lookupTable[src] == port) // dont resend to src
+            if (lookupTable[src] == port || blockedPorts.count(port)) // dont resend to src and blocked ports
                 continue;
 
             write(writePorts[port], frame, FRAME_SIZE);
@@ -171,7 +171,6 @@ bool STPConfig::isItDesignated(int _root, int _sender, int _cost) {
 void STPConfig::makeStpFrame(char* frame, int src) {
     writeNumber(frame, STP, 0, 3);
     writeNumber(frame, src, 3, 3);
-    writeNumber(frame, root, 6, 3);
     writeNumber(frame, root, 6, 3);
     writeNumber(frame, cost+1, 9, 3);
 }
